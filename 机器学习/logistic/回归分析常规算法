@@ -1,0 +1,121 @@
+#回归分析具体分类：
+目标变量是连续型的,则称其为回归分析
+(1)一元线性回归分析
+y=kx+b
+sol.lm<-lm(y~x,data)
+abline(sol.lm)
+使模型误差的平方和最小，求参数k和b，称为最小二乘法
+ 
+k=cov(x,y)/cov(x,x)
+b=mean(y)-k*mean(x)
+ 
+ 估计参数b，k的取值范围 p元模型 p是自变量数，n是样本数
+[ki-sd(ki)ta/2(n-p-1),ki+sd(ki)ta/2(n-p-1)] k0表示回归模型的b;   k1表示k;sd(k)是标准差
+自由度 df<-sol.lm$df.residual
+left<-summary(sol.lm)$coefficients[,1]-summary(sol.lm)$coeffients[,2]*qt(1-alpha/2,df)
+right<-summary(sol.lm)$coefficients[,1]+summary(sol.lm)$coeffients[,2]*qt(1-alpha/2,df)
+ 
+衡量相关程度
+变量x和y相关系数r=Sxy/sqrt(Sxx)sqrt(Syy) 取值范围是[-1,1]  cor(x,y)  
+判定系数r^2
+ 
+修正判定系数 adjusted.r^2
+判定系数在用于多元回归分析时有一个缺点，自变量数越多，判定系数越大
+ 
+回归系数的显著性检验
+ 
+T检验 summary(sol.lm)$coefficients[,4]
+计算得到的p.value值越小，其值等于0的概率也就越小，当p.value<0.05，可认定k!=0
+ 
+F检验 summary(sol.lm)$p.value
+在整体上检验模型参数是否为0，并计算等于0的概率,当p.value<0.05,则通过了F检验
+ 
+summary(sol.lm)$fstatistic 给出了样本自由度f、自变量自由度df1、F值df2
+ 
+可以使用如下代码直接读取p.value值
+pf(f,df1,df2,lower.tail=F) 或 1-pf(f,df1,df2)
+
+模型误差(残差)  residuals
+ 
+对一个正确的回归模型,其误差要服从正态分布
+ 
+残差的标准误差可以从整体上体现一个模型的误差情况，它可以用于不同模型间性能的对比
+ 
+预测
+
+predict(sol.lm)
+
+(2)多元回归分析
+sol.lm<-lm(formula=y~. ,data.train)
+ 
+模型修正函数update(object,formula)
+update函数可以在lm模型结果的基础上任意添加或减少自变量，或对目标变量做取对数及开方等建模
+ 例如:
+增加x2平方变量
+lm.new<-update(sol.lm, .~.+I(x2^2))
+删除x2变量
+.~.-x2
+把x2变为x2平方变量
+.~.-x2+I(x2^2)
+增加x1*x2
+.~.+x1*x2
+在模型中对y开方建模
+sqrt(.)~.
+ 
+逐步回归分析函数 step()
+逐步减少变量的方法
+lm.step<-step(sol.lm)
+模型的ACI数值越小越好
+ 
+自变量中包含分类型数据的回归分析
+分类变量a的取值为i,则模型预测值是f(a1=0,...ai=1,ap=0)
+ 
+(3)Logic回归 y=1/(1+exp(-x)) 使用最大似然法来估算
+使用RODBC包读取Excel文件
+ 
+root<-"C:/"
+file<-paste(root,"data.xls",sep="")
+library(RODBC)
+excel_file<-odbcConnectExcel(file)
+data<-sqlFetch(excel_file,"data")
+close(excel_file)
+ 
+使用模型的预测正确率来衡量
+ 
+                               预测数据
+                              num11              num10
+实际数据                 num01             num00
+ 
+预测正确率=(num11+num00)/样本总数量=(num11+num00)/(num11+num10+num01+num00)
+ 
+t()返回转置
+ 
+glm()是用R语言实现logic回归分析的核心函数
+family=binomial("logit")
+使用step()函数对模型进行修正
+str函数查看包含的数据属性
+ 
+模型预测
+new<-predict(old,newdata=test.data)
+new<-1/(1+exp(-new))
+new<-as.factor(ifelse(new>=0.5,1,0))
+ 
+模型的性能衡量
+performance<-length(which((predict.data==data)==TRUE))/nrow(data)
+(4)回归树CART
+实现CART算法的核心函数是rpart包的rpart函数，再用plot函数画
+maptree包的draw.tree函数
+ 
+读取叶节点sol.rpart$frame$var=="<leaf>"
+读取叶节点序号sol$rpart$where
+要使测试集误差和回归树的规模尽可能小
+ 
+cp复杂度系数 sol.rpart$cptable
+xerror是通过交叉验证获得的模型误差
+xstd是模型误差的标准差     xerror取xerror+/-xstd
+剪枝就是找到一个合理的cp值
+随着拆分的增多，复杂性参数会单调下降，但预测误差会先降后生
+ 
+剪枝
+prune(sol.part,0.02) 把cp<0.02的树剪除
+使用plotcp()函数可以绘制出cp的波动关系
